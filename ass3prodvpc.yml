@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: VPC nested stack creation
+Parameters:
+  VPCBlock: 
+    Type: String
+    Default: 10.37.48.0/22
+    Description: Cidr Block for vpc.
+
+  SubnetCidrBlock:
+    Description: Comma-delimited list of 6 CIDR blocks
+    Type: CommaDelimitedList
+    Default: "10.37.48.128/25, 10.37.49.128/25, 10.37.50.0/25, 10.37.50.128/25, 10.37.48.0/25,  10.37.49.0/25"
+    
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCBlock
+      
+  PublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [ 0, !Ref SubnetCidrBlock]
+      AvailabilityZone: us-east-1a
+    
+  PublicSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [ 1, !Ref SubnetCidrBlock]
+      AvailabilityZone: us-east-1b
+    
+  PrivateSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [ 2, !Ref SubnetCidrBlock]
+      AvailabilityZone: us-east-1a
+    
+  PrivateSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [ 3, !Ref SubnetCidrBlock]
+      AvailabilityZone: us-east-1b
+
+  DBSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [ 4, !Ref SubnetCidrBlock]
+      AvailabilityZone: us-east-1a
+      
+  DBSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [ 5, !Ref SubnetCidrBlock]
+      AvailabilityZone: us-east-1b
+      
+  RouteTable01:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+#      - Key: Name
+#        Value: Public Subnets
+#      - Key: Network
+#        Value: Public
+      - Key: Owner
+        Value: Kartavya.Srivastav@intuitive.cloud
+
+  RouteTable02:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+      - Key: Name
+        Value: Private Subnets
+      - Key: Network
+        Value: Private
+      - Key: Owner
+        Value: Kartavya.Srivastav@intuitive.cloud
+
+  PublicSubnetRouteTableAsso01:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet01
+      RouteTableId: !Ref RouteTable01
+
+  PublicSubnetRouteTableAsso02:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet02
+      RouteTableId: !Ref RouteTable01
+
+  PrivateSubnetRouteTableAsso01:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet01
+      RouteTableId: !Ref RouteTable02
+
+  PrivateSubnetRouteTableAsso02:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet02
+      RouteTableId: !Ref RouteTable02
+
+  DBSubnetRouteTableAsso01:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref DBSubnet01
+      RouteTableId: !Ref RouteTable01
+
+  DBSubnetRouteTableAsso02:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref DBSubnet02
+      RouteTableId: !Ref RouteTable02
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Owner
+        Value: Kartavya.Srivastav@intuitive.cloud
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref myVPC
+
+  Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable01
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+Outputs:
+  VpcId: 
+    Description: Vpc Id
+    Value: !Ref myVPC
